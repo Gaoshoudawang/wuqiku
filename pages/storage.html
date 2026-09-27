@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>暂存箱</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+.stage{position:relative;width:2340px;height:1080px;transform-origin:top left;overflow:hidden}
+.bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+/* 滚动容器 */
+.scroll-container{position:absolute;top:220px;left:80px;right:80px;bottom:240px;overflow-y:auto;overflow-x:hidden;padding:20px;z-index:10}
+.scroll-container::-webkit-scrollbar{display:none}
+.scroll-container{scrollbar-width:none;-ms-overflow-style:none}
+/* 空提示 */
+.empty-tip{text-align:center;color:#fff;font-size:32px;padding:100px 0;text-shadow:0 0 10px rgba(0,0,0,0.8)}
+/* 道具网格 */
+.items-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:80px;margin-bottom:40px}
+/* 道具格子 */
+.item-slot{position:relative;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s}
+.item-slot .slot-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+.item-slot .item-img{position:absolute;inset:15px;width:calc(100% - 30px);height:calc(100% - 30px);object-fit:contain;display:block;z-index:2}
+.item-slot .item-name{position:absolute;left:5px;top:20px;right:auto;text-align:left;font-size:30px;font-weight:bold;color:#ddd;text-shadow:0 2px 6px rgba(0,0,0,0.95),0 0 10px rgba(0,0,0,0.8);z-index:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90%;display:flex;align-items:center;gap:6px}
+.item-slot .item-name .showcase-icon{width:30px;height:30px;object-fit:contain;flex-shrink:0}
+.item-slot .item-count{position:absolute;right:10px;bottom:10px;color:#fff;font-size:22px;font-weight:bold;text-shadow:0 0 5px rgba(0,0,0,0.9);z-index:4}
+.item-slot .decompose-info{position:absolute;left:-30px;right:-30px;top:calc(105% + 32px);text-align:center;font-size:20px;font-weight:bold;color:#ffd700;text-shadow:0 0 5px rgba(0,0,0,0.9);z-index:3}
+/* 选中状态 */
+.item-slot.selected{transform:scale(1.05)}
+.item-slot.selected::after{content:'';position:absolute;inset:-10px;border:4px solid #ffd700;border-radius:12px;box-shadow:0 0 20px rgba(255,215,0,0.8);z-index:5;pointer-events:none}
+.item-slot.selected .check-mark{position:absolute;top:-15px;right:-15px;width:50px;height:50px;background:#ffd700;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#000;font-size:30px;font-weight:bold;z-index:6;box-shadow:0 0 10px rgba(255,215,0,0.8)}
+
+/* 底部按钮区域 */
+.bottom-bar{position:absolute;bottom:0;left:0;right:0;height:140px;z-index:20}
+.action-btn{position:absolute;height:100px;background:transparent;border:none;cursor:pointer}
+#decomposeBtn{left:1680px;top:15px;width:280px}
+#sendBtn{left:1940px;top:15px;width:280px}
+
+
+/* 已选积分显示 */
+.selected-info{position:absolute;bottom:160px;left:0;right:0;text-align:center;color:#ffd700;font-size:28px;font-weight:bold;text-shadow:0 0 10px rgba(0,0,0,0.9);z-index:15}
+/* 关闭按钮 */
+.close-btn{position:absolute;left:40px;top:30px;width:100px;height:100px;background:transparent;border:none;cursor:pointer;z-index:100}
+.select-all-btn{position:absolute;left:1495px;top:945px;width:160px;height:100px;background:transparent;border:none;cursor:pointer;z-index:999;pointer-events:auto}.select-all-btn.checked::after{content:'✓';position:absolute;left:30px;top:50%;transform:translateY(-50%);font-size:48px;color:#fff;font-weight:bold;z-index:201;text-shadow:0 0 10px rgba(0,0,0,0.9),0 0 20px rgba(255,215,0,0.8)}
+.points-display{position:absolute;right:140px;top:0px;height:90px;display:flex;align-items:center;justify-content:flex-end;gap:8px;z-index:100}
+.points-display .points-icon{height:48px;width:auto;display:block;pointer-events:none}
+.points-display .points-value{font-size:36px;font-weight:bold;color:#fff;text-shadow:0 0 5px rgba(0,0,0,0.9),0 0 10px rgba(0,0,0,0.7);min-width:80px;text-align:center;line-height:48px}
+</style>
+<style>
+
+/* ===== 防止浏览器暗夜模式自动反转颜色 ===== */
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+  -webkit-lightness-adjust: none !important;
+}
+/* 防止图片被反转 */
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+/* ============================================ */
+
+</style>
+<script src="../data/decompose_points.js"></script>
+  <script src="../data/item_base_name_map.js"></script>
+<script src="../data/item_mapping.js"></script>
+  <script src="../data/item_box_config.js"></script>
+</head>
+<body>
+<div class="stage" id="stage">
+  <img class="bg-img" src="../images/common/pages/storage/bg.png" alt="背景">
+  <button class="close-btn" id="closeBtn"></button>
+  <button class="select-all-btn" id="selectAllBtn"></button>
+  <div class="points-display">
+    <img src="../images/common/coins/points_coin_icon.png" class="points-icon" alt="兑换币">
+    <span class="points-value" id="pointsValue">0</span>
+  </div>
+  <div class="selected-info" id="selectedInfo" style="display:none">已选 0 件，分解可得 0 积分</div>
+  <div class="scroll-container" id="scrollContainer">
+    <div class="empty-tip" id="emptyTip">暂存箱为空，快去抽奖吧！</div>
+    <div class="items-grid" id="itemsGrid"></div>
+  </div>
+  <div class="bottom-bar">
+    <button class="action-btn" id="decomposeBtn"></button>
+    <button class="action-btn" id="sendBtn"></button>
+  </div>
+</div>
+<script>
+
+// 盒子函数：根据道具名称和图片类型获取图片路径
+// 支持带数量的道具名称，如"近战夺宝积分×3"、"200钻石宝箱"
+function getItemImage(itemName, type) {
+  if(!itemName) return '';
+  // 1. 先查映射表（处理特殊格式，如"200钻石宝箱" → "钻石宝箱"）
+  if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[itemName]){
+    var baseName = window.ITEM_BASE_NAME_MAP[itemName];
+    return '../images/items_box/' + baseName + '/' + type + '.png';
+  }
+  // 2. 再用正则去掉末尾的×数字（处理标准格式，如"近战夺宝积分×3" → "近战夺宝积分"）
+  var cleanName = itemName.replace(/[×*]\d+$/, '');
+  // 3. 去掉数量后缀后，再查一次映射表（处理带数量的特殊格式，如"印花|兔兔战士×1" → "印花|兔兔战士" → "印花兔兔战士"）
+  if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[cleanName]){
+    var baseName = window.ITEM_BASE_NAME_MAP[cleanName];
+    return '../images/items_box/' + baseName + '/' + type + '.png';
+  }
+  return '../images/items_box/' + cleanName + '/' + type + '.png';
+}
+
+
+// ===== 点击音效 =====
+var clickAudioPool = [];
+var clickAudioIndex = 0;
+for(var i = 0; i < 5; i++){
+  var ca = new Audio('../audio/gacha/click.m4a');
+  ca.preload = 'auto';
+  clickAudioPool.push(ca);
+}
+function playClickSound(){
+  try{
+    var audio = clickAudioPool[clickAudioIndex];
+    clickAudioIndex = (clickAudioIndex + 1) % 5;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 点击音效结束 =====
+
+
+// ===== 操作确定按钮音效（购买确定/分解/发送仓库）=====
+var actionConfirmAudioPool = [];
+var actionConfirmAudioIndex = 0;
+for(var i = 0; i < 3; i++){
+  var aca = new Audio('../audio/ui/action_confirm.m4a');
+  aca.preload = 'auto';
+  actionConfirmAudioPool.push(aca);
+}
+function playActionConfirmSound(){
+  try{
+    var audio = actionConfirmAudioPool[actionConfirmAudioIndex];
+    actionConfirmAudioIndex = (actionConfirmAudioIndex + 1) % 3;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 操作确定按钮音效结束 =====
+
+// 三种品质的黑色小方块图片
+
+
+// 分解积分表（从外部JS文件引入，方便修改）
+var DECOMPOSE_POINTS = window.DECOMPOSE_POINTS || {};
+
+// 暂存箱数据
+var storageItems = [];
+// 道具名称到item小图路径的映射表（暂存箱统一用item小图显示）
+
+
+var selectedIndices = [];
+var currentPoints = 0;
+
+// 自适应缩放
+function layout(){
+  var s = Math.min(window.innerWidth/2340, window.innerHeight/1080);
+  document.getElementById('stage').style.transform = 'scale('+s+')';
+  document.getElementById('stage').style.left = (window.innerWidth - 2340*s)/2 + 'px';
+  document.getElementById('stage').style.top = (window.innerHeight - 1080*s)/2 + 'px';
+}
+window.addEventListener('resize', layout);
+layout();
+
+// 获取道具分解积分
+function getDecomposePoints(name){
+  return DECOMPOSE_POINTS[name] || 0;
+}
+
+// 更新已选信息
+function updateSelectedInfo(){
+  var info = document.getElementById('selectedInfo');
+  if(selectedIndices.length === 0){
+    info.style.display = 'none';
+    return;
+  }
+  var totalPoints = 0;
+  for(var i = 0; i < selectedIndices.length; i++){
+    var idx = selectedIndices[i];
+    totalPoints += getDecomposePoints(storageItems[idx].name) * (storageItems[idx].count || 1);
+  }
+  info.style.display = 'block';
+  info.textContent = '已选 ' + selectedIndices.length + ' 件，分解可得 ' + totalPoints + ' 积分';
+}
+
+// 渲染暂存箱
+function renderStorage(){
+  var grid = document.getElementById('itemsGrid');
+  var emptyTip = document.getElementById('emptyTip');
+  
+  if(storageItems.length === 0){
+    emptyTip.style.display = 'block';
+    grid.innerHTML = '';
+    return;
+  }
+  
+  emptyTip.style.display = 'none';
+  grid.innerHTML = '';
+  selectedIndices = [];
+  
+  // 按品质排序：金色 > 紫色 > 白色，同品质按概率从低到高
+  storageItems.sort(function(a, b){
+    var qualityOrder = {red: -1, gold: 0, purple: 1, white: 2};
+    if(qualityOrder[a.quality] !== qualityOrder[b.quality]){
+      return qualityOrder[a.quality] - qualityOrder[b.quality];
+    }
+    return (a.weight || 0) - (b.weight || 0);
+  });
+  
+  storageItems.forEach(function(item, index){
+    var slot = document.createElement('div');
+    slot.className = 'item-slot quality-' + item.quality;
+    slot.dataset.index = index;
+    
+    var slotBg = document.createElement('img');
+    slotBg.className = 'slot-bg';
+    slotBg.src = SLOT_IMAGES[item.quality];
+    slot.appendChild(slotBg);
+    
+    var itemImg = document.createElement('img');
+    itemImg.className = 'item-img';
+    // 只使用盒子函数获取图片（无兜底）
+    var smallImgSrc = getItemImage(item.name, 'small');
+    if(smallImgSrc && smallImgSrc.indexOf('images/') === 0){
+      smallImgSrc = '../' + smallImgSrc;
+    }
+    itemImg.src = smallImgSrc;
+    slot.appendChild(itemImg);
+    
+    var itemName = document.createElement('div');
+    itemName.className = 'item-name';
+    // 有出货动画的道具，在文字前面添加v标
+    if(window.ITEM_BOX_CONFIG && window.ITEM_BOX_CONFIG[item.name] && window.ITEM_BOX_CONFIG[item.name].has_showcase){
+      var showcaseIcon = document.createElement('img');
+      showcaseIcon.className = 'showcase-icon';
+      showcaseIcon.src = '../images/common/showcase_icon.png';
+      itemName.appendChild(showcaseIcon);
+    }
+    var nameText = document.createElement('span');
+    nameText.textContent = item.name;
+    itemName.appendChild(nameText);
+    slot.appendChild(itemName);
+    
+    if(item.count > 1){
+      var itemCount = document.createElement('div');
+      itemCount.className = 'item-count';
+      itemCount.textContent = 'x' + item.count;
+      slot.appendChild(itemCount);
+    }
+    
+    // 显示分解可得积分
+    var points = getDecomposePoints(item.name);
+    if(points > 0){
+      var decomposeInfo = document.createElement('div');
+      decomposeInfo.className = 'decompose-info';
+      decomposeInfo.textContent = '分解可得 ' + points + ' 积分';
+      slot.appendChild(decomposeInfo);
+    }
+    
+    // 点击选中/取消选中
+    slot.addEventListener('click', function(){
+      playClickSound(); // 播放点击音效
+      var idx = parseInt(this.dataset.index);
+      var selectedIndex = selectedIndices.indexOf(idx);
+      if(selectedIndex === -1){
+        selectedIndices.push(idx);
+        this.classList.add('selected');
+        var checkMark = document.createElement('div');
+        checkMark.className = 'check-mark';
+        checkMark.textContent = '✓';
+        this.appendChild(checkMark);
+      } else {
+        selectedIndices.splice(selectedIndex, 1);
+        this.classList.remove('selected');
+        var checkMark = this.querySelector('.check-mark');
+        if(checkMark) checkMark.remove();
+      }
+      updateSelectedInfo();
+    });
+    
+    grid.appendChild(slot);
+  });
+  
+  updateSelectedInfo();
+}
+
+// 分解按钮
+document.getElementById('decomposeBtn').addEventListener('click', function(){
+  playActionConfirmSound(); // 播放分解按钮音效
+  if(selectedIndices.length === 0){
+    return;
+  }
+  
+  // 计算总积分
+  var totalPoints = 0;
+  var itemsToRemove = [];
+  for(var i = 0; i < selectedIndices.length; i++){
+    var idx = selectedIndices[i];
+    var item = storageItems[idx];
+    var itemPoints = getDecomposePoints(item.name);
+    console.log('道具:', item.name, '分解积分:', itemPoints, '数量:', item.count || 1);
+    totalPoints += itemPoints * (item.count || 1);
+    itemsToRemove.push(item);
+  }
+  
+  console.log('总分解积分:', totalPoints);
+  console.log('要分解的道具:', itemsToRemove);
+  
+  // 传给主页面处理分解
+  window.parent.postMessage({
+    type: 'decomposeItems',
+    points: totalPoints,
+    items: itemsToRemove
+  }, '*');
+});
+
+// 发送仓库按钮
+document.getElementById('sendBtn').addEventListener('click', function(){
+  playActionConfirmSound(); // 播放发送仓库按钮音效
+  // 获取选中的道具（用selectedIndices数组）
+  if(selectedIndices.length === 0){
+    return;
+  }
+  
+  // 发送选中的道具到仓库
+  var itemsToSend = [];
+  for(var i = 0; i < selectedIndices.length; i++){
+    var idx = selectedIndices[i];
+    var item = storageItems[idx];
+    itemsToSend.push({
+      name: item.name,
+      quality: item.quality,
+      weight: item.weight,
+      count: item.count || 1
+    });
+  }
+  
+  window.parent.postMessage({
+    type: 'sendToWarehouse',
+    items: itemsToSend
+  }, '*');
+});
+
+// 接收主页面传来的暂存箱数据
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'storageData'){
+    storageItems = e.data.items || [];
+    selectedIndices = [];
+    if(e.data.points !== undefined){
+      currentPoints = e.data.points;
+      document.getElementById('pointsValue').textContent = currentPoints;
+    }
+    renderStorage();
+    updateSelectedInfo();
+  }
+  if(e.data && e.data.type === 'updatePoints'){
+    currentPoints = e.data.points || 0;
+    document.getElementById('pointsValue').textContent = currentPoints;
+  }
+  if(e.data && e.data.type === 'decomposeSuccess'){
+    // 分解成功，重新渲染
+    storageItems = e.data.items || [];
+    // 更新积分显示
+    if(e.data.points !== undefined){
+      currentPoints = e.data.points;
+      document.getElementById('pointsValue').textContent = currentPoints;
+    }
+    renderStorage();
+  }
+  if(e.data && e.data.type === 'decomposeSuccess'){
+    // 分解成功，重新渲染并清空选中状态
+    storageItems = e.data.items || [];
+    selectedIndices = [];
+    if(e.data.points !== undefined){
+      currentPoints = e.data.points;
+      document.getElementById('pointsValue').textContent = currentPoints;
+    }
+    renderStorage();
+    updateSelectedInfo();
+  }
+  if(e.data && e.data.type === 'sendToWarehouseSuccess'){
+    // 发送仓库成功，重新渲染
+    storageItems = e.data.items || [];
+    selectedIndices = [];
+    renderStorage();
+    updateSelectedInfo();
+  }
+});
+
+// 关闭按钮
+document.getElementById('closeBtn').addEventListener('click', function(){
+  window.parent.postMessage({type:'closeStorage'}, '*');
+});
+// 全选按钮
+document.getElementById('selectAllBtn').addEventListener('click', function(){
+  playClickSound(); // 播放点击音效
+  var slots = document.querySelectorAll('.item-slot');
+  var allSelected = selectedIndices.length === storageItems.length;
+  var selectAllBtn = document.getElementById('selectAllBtn');
+  
+  if(allSelected){
+    // 取消全选
+    selectedIndices = [];
+    slots.forEach(function(slot){
+      slot.classList.remove('selected');
+      var checkMark = slot.querySelector('.check-mark');
+      if(checkMark) checkMark.remove();
+    });
+    selectAllBtn.classList.remove('checked');
+  } else {
+    // 全选
+    selectedIndices = [];
+    slots.forEach(function(slot, index){
+      var idx = parseInt(slot.dataset.index);
+      selectedIndices.push(idx);
+      slot.classList.add('selected');
+      var checkMark = slot.querySelector('.check-mark');
+      if(!checkMark){
+        checkMark = document.createElement('div');
+        checkMark.className = 'check-mark';
+        checkMark.textContent = '✓';
+        slot.appendChild(checkMark);
+      }
+    });
+    selectAllBtn.classList.add('checked');
+  }
+  updateSelectedInfo();
+});
+
+// 页面加载完成后，请求暂存箱数据
+window.onload = function(){
+  window.parent.postMessage({type:'requestStorageData'}, '*');
+  window.parent.postMessage({type:'requestPoints'}, '*');
+};
+</script>
+
+<script>
+// 禁止长按弹出菜单
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  return false;
+});
+// 禁止图片拖拽
+document.addEventListener('dragstart', function(e){
+  if(e.target.tagName === 'IMG'){
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body>
+</html>

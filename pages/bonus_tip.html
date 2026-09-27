@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>额外加赠提示</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+
+/* 舞台（固定2340x1080，JS动态缩放） */
+.stage{position:relative;width:2340px;height:1080px;transform-origin:top left;overflow:hidden}
+
+/* 背景层 */
+.bg-layer{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+
+/* 确定按钮（透明热区） */
+.confirm-btn{position:absolute;left:40%;top:82%;width:20%;height:10%;background:transparent;border:none;cursor:pointer;z-index:100}
+</style>
+<style>
+
+/* ===== 防止浏览器暗夜模式自动反转颜色 ===== */
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+  -webkit-lightness-adjust: none !important;
+}
+/* 防止图片被反转 */
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+/* ============================================ */
+
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <img class="bg-layer" id="bgImg" src="../images/common/bonus/extra/tip_bg.png" alt="额外加赠提示">
+  <button class="confirm-btn" id="confirmBtn"></button>
+</div>
+
+<script>
+// ===== 预加载模式检查 =====
+var isPreloadMode = false;
+try {
+  var urlParams = new URLSearchParams(window.location.search);
+  isPreloadMode = urlParams.get('preload') === '1';
+} catch(e){}
+// 自适应缩放
+function layout(){
+  var s = Math.min(window.innerWidth/2340, window.innerHeight/1080);
+  document.getElementById('stage').style.transform = 'scale('+s+')';
+  document.getElementById('stage').style.left = (window.innerWidth - 2340*s)/2 + 'px';
+  document.getElementById('stage').style.top = (window.innerHeight - 1080*s)/2 + 'px';
+}
+window.addEventListener('resize', layout);
+layout();
+
+// 是否已跳转标记，防止重复跳转
+var hasConfirmed = false;
+
+// 跳转函数
+function doConfirm(){
+  if(hasConfirmed) return;
+  hasConfirmed = true;
+  parent.postMessage({type: 'bonusTipConfirm'}, '*');
+}
+
+// 页面加载后自动延迟1秒跳转（预加载模式下不执行）
+if(!isPreloadMode){
+  setTimeout(doConfirm, 1000);
+}
+
+// 确定按钮点击（用户可以点击快速跳转）
+document.getElementById('confirmBtn').addEventListener('click', doConfirm);
+
+// 监听ESC键
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    doConfirm();
+  }
+});
+</script>
+
+<script>
+// 禁止长按弹出菜单
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  return false;
+});
+// 禁止图片拖拽
+document.addEventListener('dragstart', function(e){
+  if(e.target.tagName === 'IMG'){
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>兑换商城</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:"Microsoft YaHei",sans-serif}
+.stage{position:absolute;top:50%;left:50%;width:2340px;height:1080px;margin:-540px 0 0 -1170px;transform-origin:center center}
+.bg-img{position:absolute;inset:0;width:2340px;height:1080px;pointer-events:none;user-select:none;-webkit-user-drag:none;display:block}
+.hotspot-layer{position:absolute;inset:0;z-index:10}
+.hotspot{position:absolute;pointer-events:auto;cursor:pointer;border-radius:6px;transition:background .1s}
+.hotspot:active{background:rgba(255,215,0,.18)}
+.hotspot.selected{background:rgba(255,215,0,.1)}
+.hotspot.disabled{cursor:default}
+.hotspot.disabled:active{background:transparent}
+.ripple{position:absolute;border-radius:50%;border:3px solid rgba(255,200,50,.9);transform:translate(-50%,-50%) scale(0);animation:rippleExpand .6s ease-out forwards;pointer-events:none;z-index:100}
+@keyframes rippleExpand{0%{transform:translate(-50%,-50%) scale(0);opacity:1}100%{transform:translate(-50%,-50%) scale(5);opacity:0}}
+.flash{position:absolute;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,200,.8),transparent 70%);transform:translate(-50%,-50%) scale(0);animation:flashBurst .4s ease-out forwards;pointer-events:none;z-index:99}
+@keyframes flashBurst{0%{transform:translate(-50%,-50%) scale(0);opacity:1}100%{transform:translate(-50%,-50%) scale(2.5);opacity:0}}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);background:linear-gradient(160deg,#8a92a8 0%,#6a7288 30%,#5a6278 60%,#4a5268 100%);border:2px solid #505868;border-radius:4px;padding:22px 45px;color:#fff;font-size:22px;font-weight:bold;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;box-shadow:0 0 40px rgba(0,0,0,.6);white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+.hotspot,
+.hotspot:active,
+.hotspot:hover,
+.hotspot:focus,
+.hotspot.pulse,
+.hotspot.selected{
+  border:none!important;
+  background:transparent!important;
+  outline:none!important;
+  box-shadow:none!important;
+  animation:none!important;
+}
+.hotspot-label{display:none!important}
+
+/* 禁止长按查看图片/保存图片 */
+img{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+/* 禁止全局右键菜单 */
+*{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+</style>
+<style>
+
+/* ===== 防止浏览器暗夜模式自动反转颜色 ===== */
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+  -webkit-lightness-adjust: none !important;
+}
+/* 防止图片被反转 */
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+/* ============================================ */
+
+</style>
+  <script src="../data/exchange_data.js"></script>
+</head>
+<body>
+<div class="stage" id="stage">
+<img class="bg-img" id="bgImg" src="" draggable="false" style="display:none">
+<!-- 兑换币（图标+数字），和首页一模一样 -->
+<div id="pointsDisplay" style="position:absolute;left:1900px;top:16px;display:flex;align-items:center;gap:6px;z-index:30;pointer-events:none">
+  <img src="../images/common/coins/points_coin_icon.png" style="height:44px;width:auto;display:block">
+  <span id="pointsNum" style="color:#fff;font-size:32px;font-weight:bold;line-height:44px;text-shadow:0 0 5px rgba(0,0,0,0.9)">0</span>
+</div>
+<div class="hotspot-layer">
+<div class="hotspot" data-action="back" style="left:10px;top:10px;width:100px;height:100px"></div>
+<div id="catList"></div>
+<div class="hotspot" data-product="0" style="left:200px;top:145px;width:240px;height:255px"></div>
+<div class="hotspot" data-product="1" style="left:445px;top:145px;width:240px;height:255px"></div>
+<div class="hotspot" data-product="2" style="left:690px;top:145px;width:240px;height:255px"></div>
+<div class="hotspot" data-product="3" style="left:200px;top:405px;width:240px;height:255px"></div>
+<div class="hotspot" data-product="4" style="left:445px;top:405px;width:240px;height:255px"></div>
+<div class="hotspot" data-product="5" style="left:690px;top:405px;width:240px;height:255px"></div>
+<div class="hotspot" data-action="qtyMinus" style="left:1180px;top:960px;width:90px;height:90px"></div>
+<div class="hotspot" data-action="qtyPlus" style="left:1520px;top:960px;width:90px;height:90px"></div>
+<div class="hotspot" data-action="exchange" style="left:1730px;top:950px;width:360px;height:100px;border-radius:8px"></div>
+</div>/div>/div>/div>/div>/div>/div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+
+// ===== 点击音效 =====
+var clickAudioPool = [];
+var clickAudioIndex = 0;
+for(var i = 0; i < 5; i++){
+  var ca = new Audio('../audio/gacha/click.m4a');
+  ca.preload = 'auto';
+  clickAudioPool.push(ca);
+}
+function playClickSound(){
+  try{
+    var audio = clickAudioPool[clickAudioIndex];
+    clickAudioIndex = (clickAudioIndex + 1) % 5;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 点击音效结束 =====
+
+
+;
+
+// 动态获取第一个分类，不硬编码
+let currentCat = Object.keys(products)[0] || "wangzhejinzhan";
+let selectedIdx = 0;
+let exchangeQty = 1;
+let userCoins = 21;
+
+function setBg(key) {
+  if (key) {
+    document.getElementById('bgImg').src = key;
+  }
+}
+
+function selectProduct(idx) {
+  const list = products[currentCat];
+  const p = list[idx];
+  if (!p || !p.name) { return; }
+  
+  // 禁用兑换的道具
+  const exchangeBtn = document.querySelector('[data-action="exchange"]');
+  const qtyMinusBtn = document.querySelector('[data-action="qtyMinus"]');
+  const qtyPlusBtn = document.querySelector('[data-action="qtyPlus"]');
+  if (p.disabled) {
+    if (exchangeBtn) exchangeBtn.style.pointerEvents = 'none';
+    if (qtyMinusBtn) qtyMinusBtn.style.pointerEvents = 'none';
+    if (qtyPlusBtn) qtyPlusBtn.style.pointerEvents = 'none';
+  } else {
+    if (exchangeBtn) exchangeBtn.style.pointerEvents = 'auto';
+    if (qtyMinusBtn) qtyMinusBtn.style.pointerEvents = 'auto';
+    if (qtyPlusBtn) qtyPlusBtn.style.pointerEvents = 'auto';
+  }
+  
+  selectedIdx = idx;
+  exchangeQty = 1;
+  document.querySelectorAll('[data-product]').forEach(el => {
+    const i = parseInt(el.dataset.product);
+    el.classList.toggle('selected', i === idx);
+    el.classList.toggle('disabled', !list[i] || !list[i].name || list[i].disabled);
+  });
+  if (p.bg) setBg(p.bg);
+}
+
+function switchCat(cat) {
+  currentCat = cat;
+  document.querySelectorAll('[data-cat]').forEach(el => {
+    el.classList.toggle('selected', el.dataset.cat === cat);
+  });
+  const list = products[cat];
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].name) { selectProduct(i); break; }
+  }
+  setBg(catDefault[cat]);
+}
+
+document.querySelectorAll('.hotspot').forEach(el => {
+  el.addEventListener('click', (e) => {
+    playClickSound(); // 播放点击音效
+    const action = el.dataset.action;
+    const cat = el.dataset.cat;
+    const product = el.dataset.product;
+    if (cat) switchCat(cat);
+    else if (product !== undefined) selectProduct(parseInt(product));
+    else if (action === 'back') { window.parent.postMessage({type:'closeExchange'}, '*'); }
+    else if (action === 'qtyMinus') { if (exchangeQty > 1) exchangeQty--; showToast('数量: ' + exchangeQty); }
+    else if (action === 'qtyPlus') {
+      const p = products[currentCat][selectedIdx];
+      if (p && exchangeQty < p.limit) exchangeQty++;
+      showToast('数量: ' + exchangeQty);
+    }
+    else if (action === 'exchange') doExchange();
+    if (!el.classList.contains('disabled')) spawnEffect(e);
+  });
+});
+
+function doExchange() {
+  const p = products[currentCat][selectedIdx];
+  if (!p || !p.name || p.disabled) { return; }
+  if (p.shopOnly) { showToast('该商品仅商城售卖'); return; }
+  // 发送消息给主页面，打开二次确认页面
+  window.parent.postMessage({type:'openExchangeConfirm', product: p.name, price: p.price, qty: exchangeQty}, '*');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+function spawnEffect(e) {
+  if (!e) return;
+  const stage = document.getElementById('stage');
+  const rect = stage.getBoundingClientRect();
+  const sx = 2340 / rect.width, sy = 1080 / rect.height;
+  const cx = (e.clientX - rect.left) * sx, cy = (e.clientY - rect.top) * sy;
+  const flash = document.createElement('div');
+  flash.className = 'flash';
+  flash.style.left = cx + 'px';
+  flash.style.top = cy + 'px';
+  stage.appendChild(flash);
+  setTimeout(() => flash.remove(), 400);
+  const ripple = document.createElement('div');
+  ripple.className = 'ripple';
+  ripple.style.left = cx + 'px';
+  ripple.style.top = cy + 'px';
+  ripple.style.width = '50px';
+  ripple.style.height = '50px';
+  stage.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 600);
+}
+
+function layout() {
+  var s = Math.min(window.innerWidth / 2340, window.innerHeight / 1080);
+  document.getElementById('stage').style.transform = 'scale(' + s + ')';
+}
+window.addEventListener('resize', layout);
+layout();
+
+// 接收父页面传递的兑换币数量
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'updatePoints'){
+    var el = document.getElementById('pointsNum');
+    if(el) el.textContent = e.data.points;
+  }
+});
+// 动态生成分类按钮
+var catList = document.getElementById('catList');
+var catNames = Object.keys(products);
+catNames.forEach(function(cat, idx){
+  var catBtn = document.createElement('div');
+  catBtn.className = 'hotspot' + (idx === 0 ? ' selected' : '');
+  catBtn.setAttribute('data-cat', cat);
+  catBtn.style.cssText = 'left:0;top:' + (90 + idx * 120) + 'px;width:140px;height:115px';
+  // 只给新生成的分类按钮绑定事件
+  catBtn.addEventListener('click', function(e){
+    playClickSound();
+    switchCat(cat);
+    spawnEffect(e);
+  });
+  catList.appendChild(catBtn);
+});
+
+
+
+// 页面初始化时选中第一个道具
+// 动态设置初始背景图（不硬编码）
+var firstCat = Object.keys(products)[0];
+if(firstCat && catDefault[firstCat]){
+  setBg(catDefault[firstCat]);
+  document.getElementById('bgImg').style.display = 'block';
+}
+selectProduct(0);
+</script>
+
+<script>
+// 禁止长按弹出菜单
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  return false;
+});
+// 禁止图片拖拽
+document.addEventListener('dragstart', function(e){
+  if(e.target.tagName === 'IMG'){
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body>
+</html>
